@@ -1,27 +1,40 @@
-import requests 
-import json
-url = "https://guilhermeonrails.github.io/api-restaurantes/restaurantes.json"
+import sys
+print(f"DEBUG: O Python que está rodando é: {sys.executable}")
+import requests
 
-response = requests.get(url)
-print(response)
+from fastapi import FastAPI, Query, HTTPException
+import requests
+app = FastAPI()
 
-if response.status_code == 200:
-    restaurantes = response.json()
-    dados_restaurantes = {}
-    for item in restaurantes:
-        nome_do_restaurante = item["Company"]
-        if nome_do_restaurante not in dados_restaurantes:
-            dados_restaurantes[nome_do_restaurante] = []
+@app.get("/api/hello")
+def hello():
+    '''
+    Endpoint de exemplo para testar a API.
+    '''
+    return {"message": "Hello, World!"}
 
-        dados_restaurantes[nome_do_restaurante].append({
-                    "item": item["Item"],
-                    "preco": item["price"],
-                    "descricao": item["description"]
-                })
-else:
-    print("Não foi possível obter os dados dos restaurantes.")
+@app.get("/api/restaurantes/")
+def listar_restaurantes(restaurante: str = Query(None)):
+    '''
+    Endpoint para listar os restaurantes e seus cardápios.
+    '''
+    url = "https://guilhermeonrails.github.io/api-restaurantes/restaurantes.json"
+    response = requests.get(url)
 
-for nome_do_restaurante, itens in dados_restaurantes.items():
-    nome_do_arquivo = f'{nome_do_restaurante}.json'
-    with open(nome_do_arquivo, 'w') as arquivo:
-        json.dump(itens, arquivo, indent=4)
+    if response.status_code == 200:
+        restaurantes = response.json()
+        if restaurante is None:
+            return {"Dados dos restaurantes": restaurantes}
+        
+        dados_restaurantes = []
+        for item in restaurantes:
+            if item["Company"].lower() == restaurante.lower():
+                dados_restaurantes.append({
+                            "item": item["Item"],
+                            "preco": item["price"],
+                            "descricao": item["description"]
+                        })
+        return {"Restaurante": restaurante, "Cardápio": dados_restaurantes}
+
+    else:
+        raise HTTPException(status_code=response.status_code, detail="Erro ao buscar dados da API externa")
